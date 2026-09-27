@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -55,3 +58,26 @@ jobs:
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
+      # Only when the commit message contains [voiceover]: generate demo-video voiceovers
+      # from the live app and publish them to the "voiceover-output" branch.
+      - name: Generate voiceovers
+        if: contains(github.event.head_commit.message, '[voiceover]')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          SUB=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result?.subdomain||""))')
+          echo "workers.dev subdomain: $SUB"
+          BASE="https://x09-ai.$SUB.workers.dev"
+          mkdir -p out && sleep 10
+          for v in athena hera asteria thalia; do
+            for try in 1 2 3; do
+              curl -sf -m 120 "$BASE/api/voice-demo/audio?key=x09-vo-7f3k9q&voice=$v&script=2" -o "out/$v.wav" && break
+              sleep 10
+            done
+            ls -la "out/$v.wav" || true
+          done
+          cd out && git init -q && git checkout -q -b voiceover-output
+          git add . && git -c user.name="github-actions" -c user.email="actions@github.com" commit -qm "Voiceovers"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" voiceover-output

@@ -23,7 +23,20 @@ const PHRASES = [
   "Launch your mission.",
 ];
 
+// Script v2: fuller sentences for more natural, professional delivery
+const PHRASES_V2 = [
+  "Meet X zero nine. Your AI co-pilot.",
+  "Ask anything. Plan, write, code, and analyze, in seconds.",
+  "Answers stream in instantly. Fast mode, for speed.",
+  "And Deep mode, for the hard stuff.",
+  "Every mission is saved to your account, on any device.",
+  "Plans start at just twelve dollars a month.",
+  "X zero nine. Launch your mission.",
+];
+
 const VOICES = [
+  { id: "athena", label: "Athena", note: "Calm, smooth, professional" },
+  { id: "hera", label: "Hera", note: "Warm, smooth, professional" },
   { id: "thalia", label: "Thalia", note: "Clear, confident, energetic" },
   { id: "asteria", label: "Asteria", note: "Polished, knowledgeable" },
   { id: "luna", label: "Luna", note: "Warm, friendly, natural" },
@@ -71,7 +84,8 @@ export async function voiceDemo(request, env) {
   if (url.pathname.endsWith("/audio")) {
     const voice = VOICES.find((v) => v.id === url.searchParams.get("voice")) || VOICES[0];
     const pcm = [];
-    for (const p of PHRASES) pcm.push(await speak(env, p, voice.id));
+    const script = url.searchParams.get("script") === "2" ? PHRASES_V2 : PHRASES;
+    for (const p of script) pcm.push(await speak(env, p, voice.id));
     return new Response(wav(pcm, 0.9), {
       headers: {
         "content-type": "audio/wav",
