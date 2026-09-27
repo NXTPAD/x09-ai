@@ -1,7 +1,7 @@
 // Stripe billing: Checkout (subscribe), Customer Portal (manage/cancel/switch), webhook (sync plan)
 import { json, readJson, hmacHex, safeEqual, HttpError } from "./util.js";
 import { requireUser } from "./auth.js";
-import { PLANS, planForPriceId, ACTIVE_STATUSES } from "./plans.js";
+import { PLANS, PLAN_ORDER, ACTIVE_STATUSES } from "./plans.js";
 
 const API = "https://api.stripe.com/v1";
 
@@ -31,6 +31,45 @@ async function stripe(env, method, path, params) {
   return data;
 }
 
+// ---------- Price lookup ----------
+// Uses STRIPE_PRICE_* vars if set; otherwise finds the active monthly price of the Stripe
+// product whose name matches each plan ("Pilot", "Commander", "Fleet"). Cached for 10 minutes.
+let priceCache = null;
+const isRealPriceId = (v) => typeof v === "string" && /^price_(?!REPLACE)/.test(v);
+
+export async function priceMap(env) {
+  if (PLAN_ORDER.every((k) => isRealPriceId(env[PLANS[k].priceEnv]))) {
+    return Object.fromEntries(PLAN_ORDER.map((k) => [k, env[PLANS[k].priceEnv]]));
+  }
+  if (priceCache && priceCache.expires > Date.now()) return priceCache.map;
+  const map = {};
+  for (const k of PLAN_ORDER) if (isRealPriceId(env[PLANS[k].priceEnv])) map[k] = env[PLANS[k].priceEnv];
+  let url = "/prices?active=true&type=recurring&limit=100&expand[]=data.product";
+  const prices = [];
+  for (let page = 0; page < 5; page++) {
+    const r = await stripe(env, "GET", url);
+    prices.push(...r.data);
+    if (!r.has_more) break;
+    url = `/prices?active=true&type=recurring&limit=100&expand[]=data.product&starting_after=${r.data[r.data.length - 1].id}`;
+  }
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  for (const k of PLAN_ORDER) {
+    if (map[k]) continue;
+    const want = norm(PLANS[k].name);
+    const matches = prices.filter(
+      (p) => p.product && typeof p.product === "object" && p.product.active !== false && norm(p.product.name) === want && p.recurring?.interval === "month"
+    );
+    if (matches.length) map[k] = matches.sort((a, b) => b.created - a.created)[0].id;
+  }
+  priceCache = { map, expires: Date.now() + 10 * 60 * 1000 };
+  return map;
+}
+
+async function planForPrice(env, priceId) {
+  const map = await priceMap(env);
+  return PLAN_ORDER.find((k) => map[k] === priceId) || null;
+}
+
 async function ensureCustomer(env, user) {
   if (user.stripe_customer_id) return user.stripe_customer_id;
   const c = await stripe(env, "POST", "/customers", { email: user.email, metadata: { user_id: user.id } });
@@ -47,8 +86,8 @@ export async function checkout(request, env) {
   const key = body?.plan;
   const plan = PLANS[key];
   if (!plan) return json({ error: "Unknown plan." }, 400);
-  const price = env[plan.priceEnv];
-  if (!price) return json({ error: `Billing isn't configured yet (missing ${plan.priceEnv}).` }, 500);
+  const price = (await priceMap(env))[key];
+  if (!price) return json({ error: `Billing isn't set up yet: no active monthly Stripe price found for a product named "${plan.name}".` }, 500);
 
   // Already subscribed? Send them to the portal to switch plans instead of double-subscribing.
   if (user.stripe_subscription_id && ACTIVE_STATUSES.has(user.sub_status)) {
@@ -99,7 +138,7 @@ async function verifySignature(request, env, payload) {
 
 async function syncSubscription(env, sub, userIdHint) {
   const priceId = sub.items?.data?.[0]?.price?.id;
-  const plan = planForPriceId(env, priceId);
+  const plan = await planForPrice(env, priceId);
   const periodEnd = (sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end ?? null);
   const active = ACTIVE_STATUSES.has(sub.status);
 

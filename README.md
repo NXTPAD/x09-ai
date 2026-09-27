@@ -43,7 +43,8 @@ Only if you deploy by hand do you need to paste its `database_id` into `wrangler
 
 ### 2. Stripe
 1. **Products → Add product** three times (Pilot, Commander, Fleet), each with a **recurring monthly** price ($12 / $29 / $79).
-   Copy each **Price ID** (`price_...`) into `wrangler.toml` → `STRIPE_PRICE_PILOT`, `STRIPE_PRICE_COMMANDER`, `STRIPE_PRICE_FLEET`.
+   Name them exactly **Pilot**, **Commander** and **Fleet** — the app finds their monthly prices automatically.
+   (Optional: pin specific prices by putting their `price_...` IDs in `wrangler.toml`.)
 2. **Developers → API keys**: copy the **Secret key** (`sk_test_...` while testing, `sk_live_...` when live).
 3. **Developers → Webhooks → Add endpoint**
    - URL: `https://<your-domain>/api/stripe/webhook`

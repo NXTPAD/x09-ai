@@ -26,7 +26,8 @@ migrations_dir = "migrations"
 AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"        # Fast mode
 AI_MODEL_DEEP = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"  # Deep mode
 
-# Stripe Price IDs (not secret) — one recurring monthly price per plan
+# Stripe Price IDs — OPTIONAL. Leave as-is and the app finds the active monthly price of the
+# Stripe products named "Pilot", "Commander" and "Fleet" automatically.
 STRIPE_PRICE_PILOT = "price_REPLACE_ME"
 STRIPE_PRICE_COMMANDER = "price_REPLACE_ME"
 STRIPE_PRICE_FLEET = "price_REPLACE_ME"

@@ -67,7 +67,7 @@ try {
   const cs = stripeCalls.find((c) => c.path === "/checkout/sessions");
   assert.equal(cs.params["line_items[0][price]"], "price_commander");
   assert.equal(cs.params["mode"], "subscription");
-  assert.equal(cs.params["client_reference_id"], userId); ok("checkout session created for Commander price");
+  assert.equal(cs.params["client_reference_id"], userId); ok("checkout finds Commander's monthly price by product name");
 
   // Webhook: bad signature
   const me0 = (await api("/api/me")).data.user;

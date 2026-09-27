@@ -48,6 +48,13 @@ globalThis.fetch = async (input, init = {}) => {
   const params = new URLSearchParams(init.body || "");
   stripeCalls.push({ method: init.method, path: p, params: Object.fromEntries(params) });
   const J = (o) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json" } });
+  if (p.startsWith("/prices")) {
+    const mk = (id, name, amount, interval = "month", created = 1) => ({ id, created, unit_amount: amount, recurring: { interval }, product: { id: "prod_" + name, name, active: true } });
+    return J({ has_more: false, data: [
+      mk("price_pilot", "Pilot", 1200), mk("price_commander", "Commander", 2900), mk("price_fleet", "Fleet", 7900),
+      mk("price_fleet_yearly", "Fleet", 79000, "year", 5), mk("price_other", "Something else", 500),
+    ] });
+  }
   if (p === "/customers") return J({ id: "cus_test_" + Math.random().toString(36).slice(2, 8) });
   if (p === "/checkout/sessions") return J({ id: "cs_test", url: `http://localhost:${PORT}/?checkout=success&mock_price=${params.get("line_items[0][price]")}&mock_user=${params.get("client_reference_id")}` });
   if (p === "/billing_portal/sessions") return J({ id: "bps_test", url: `http://localhost:${PORT}/?portal=1` });
@@ -60,7 +67,8 @@ export const env = {
   DB, ASSETS, MOCK_AI: "1",
   AI_MODEL: "fast-model", AI_MODEL_DEEP: "deep-model",
   STRIPE_SECRET_KEY: "sk_test_mock", STRIPE_WEBHOOK_SECRET: "whsec_test",
-  STRIPE_PRICE_PILOT: "price_pilot", STRIPE_PRICE_COMMANDER: "price_commander", STRIPE_PRICE_FLEET: "price_fleet",
+  // Placeholders on purpose: prices are found automatically by product name (like production)
+  STRIPE_PRICE_PILOT: "price_REPLACE_ME", STRIPE_PRICE_COMMANDER: "price_REPLACE_ME", STRIPE_PRICE_FLEET: "price_REPLACE_ME",
 };
 
 export const server = http.createServer(async (req, res) => {
