@@ -15,6 +15,7 @@ import { signup, login, logout, me, deleteAccount } from "./auth.js";
 import { checkout, portal, webhook } from "./stripe.js";
 import { chat, listThreads, getThread, deleteThread, deleteAllThreads } from "./chat.js";
 import { publicPlans } from "./plans.js";
+import { voiceDemo } from "./voice.js";
 
 // Block cross-site form posts: state-changing requests must come from our own origin
 function sameOrigin(request) {
@@ -32,6 +33,7 @@ async function route(request, env, ctx) {
   if (m !== "GET" && m !== "HEAD" && !sameOrigin(request)) return json({ error: "Forbidden" }, 403);
 
   if (p === "/api/health") return json({ ok: true, service: "x09-ai", time: new Date().toISOString() });
+  if ((p === "/api/voice-demo" || p === "/api/voice-demo/audio") && m === "GET") return voiceDemo(request, env);
   if (p === "/api/plans" && m === "GET") return json({ plans: publicPlans() });
 
   if (p === "/api/auth/signup" && m === "POST") return signup(request, env);
