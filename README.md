@@ -36,9 +36,10 @@ If you change a price, change it **both** in `src/plans.js` (label) and on the S
 ```bash
 npm install
 npx wrangler login
-npx wrangler d1 create x09-db          # copy the database_id it prints
 ```
-Paste the `database_id` into `wrangler.toml`.
+Create a D1 database named `x09-db` (dashboard: Storage & Databases → D1 → Create, or `npx wrangler d1 create x09-db`).
+The GitHub deploy looks it up by name and fills in the ID automatically (and creates it if it's missing).
+Only if you deploy by hand do you need to paste its `database_id` into `wrangler.toml`.
 
 ### 2. Stripe
 1. **Products → Add product** three times (Pilot, Commander, Fleet), each with a **recurring monthly** price ($12 / $29 / $79).
