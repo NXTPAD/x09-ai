@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <radialGradient id="p" cx="36%" cy="32%" r="75%"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#d4d4d4"/><stop offset=".8" stop-color="#5a5a5a"/><stop offset="1" stop-color="#1e1e1e"/></radialGradient>
+    <clipPath id="f"><rect x="-40" y="0" width="80" height="40" transform="translate(32 32) rotate(-22)"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <ellipse cx="32" cy="32" rx="27" ry="8.5" transform="rotate(-22 32 32)" stroke="#fff" stroke-width="3.2"/>
+  <circle cx="32" cy="32" r="15" fill="url(#p)"/>
+  <g clip-path="url(#f)">
+    <ellipse cx="32" cy="32" rx="27" ry="8.5" transform="rotate(-22 32 32)" stroke="#000" stroke-width="7.5"/>
+    <ellipse cx="32" cy="32" rx="27" ry="8.5" transform="rotate(-22 32 32)" stroke="#fff" stroke-width="3.2"/>
+  </g>
+</svg>

@@ -1,0 +1,35 @@
+name = "x09-ai"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+# The app (served at "/")
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# Workers AI powers the chat
+[ai]
+binding = "AI"
+
+# Database for accounts, chats, usage.
+# Create it once:  npx wrangler d1 create x09-db   → paste the database_id below
+[[d1_databases]]
+binding = "DB"
+database_name = "x09-db"
+database_id = "PASTE_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"        # Fast mode
+AI_MODEL_DEEP = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"  # Deep mode
+
+# Stripe Price IDs (not secret) — one recurring monthly price per plan
+STRIPE_PRICE_PILOT = "price_REPLACE_ME"
+STRIPE_PRICE_COMMANDER = "price_REPLACE_ME"
+STRIPE_PRICE_FLEET = "price_REPLACE_ME"
+
+# Secrets — set with `npx wrangler secret put NAME` (never commit these):
+#   STRIPE_SECRET_KEY       sk_live_... (or sk_test_... while testing)
+#   STRIPE_WEBHOOK_SECRET   whsec_...

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <radialGradient id="p" cx="36%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#d4d4d4"/>
+      <stop offset=".8" stop-color="#5a5a5a"/>
+      <stop offset="1" stop-color="#1e1e1e"/>
+    </radialGradient>
+    <!-- front half of the ring (below the ring's axis, in its rotated frame) -->
+    <clipPath id="front"><rect x="-40" y="0" width="80" height="40" transform="translate(32 32) rotate(-22)"/></clipPath>
+  </defs>
+  <!-- back ring -->
+  <ellipse cx="32" cy="32" rx="29" ry="9" transform="rotate(-22 32 32)" stroke="#ffffff" stroke-width="2.6"/>
+  <!-- planet -->
+  <circle cx="32" cy="32" r="16" fill="url(#p)"/>
+  <!-- front ring with black gap for separation -->
+  <g clip-path="url(#front)">
+    <ellipse cx="32" cy="32" rx="29" ry="9" transform="rotate(-22 32 32)" stroke="#000" stroke-width="6.5"/>
+    <ellipse cx="32" cy="32" rx="29" ry="9" transform="rotate(-22 32 32)" stroke="#ffffff" stroke-width="2.6"/>
+  </g>
+  <!-- moon -->
+  <circle cx="53" cy="13" r="2.6" fill="#ffffff"/>
+</svg>
