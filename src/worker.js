@@ -1,7 +1,8 @@
 /**
  * X09 AI — Cloudflare Worker (router)
  *
- *  Accounts   POST /api/auth/signup | /api/auth/login | /api/auth/logout | /api/auth/delete
+ *  Accounts   POST /api/auth/signup | /api/auth/login | /api/auth/logout | /api/auth/delete | /api/auth/password
+ *             POST /api/profile
  *             GET  /api/me
  *  Plans      GET  /api/plans
  *  Billing    POST /api/billing/checkout | /api/billing/portal
@@ -11,7 +12,7 @@
  *  Everything else → the app in /public
  */
 import { json, HttpError } from "./util.js";
-import { signup, login, logout, me, deleteAccount } from "./auth.js";
+import { signup, login, logout, me, deleteAccount, updateProfile, changePassword } from "./auth.js";
 import { checkout, portal, webhook } from "./stripe.js";
 import { chat, listThreads, getThread, deleteThread, deleteAllThreads } from "./chat.js";
 import { publicPlans } from "./plans.js";
@@ -40,6 +41,8 @@ async function route(request, env, ctx) {
   if (p === "/api/auth/login" && m === "POST") return login(request, env);
   if (p === "/api/auth/logout" && m === "POST") return logout(request, env);
   if (p === "/api/auth/delete" && m === "POST") return deleteAccount(request, env);
+  if (p === "/api/auth/password" && m === "POST") return changePassword(request, env);
+  if (p === "/api/profile" && m === "POST") return updateProfile(request, env);
   if (p === "/api/me" && m === "GET") return me(request, env);
 
   if (p === "/api/billing/checkout" && m === "POST") return checkout(request, env);

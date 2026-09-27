@@ -105,6 +105,7 @@
     authModal: $("authModal"), authForm: $("authForm"), authEmail: $("authEmail"), authPassword: $("authPassword"),
     authError: $("authError"), authSubmit: $("authSubmit"), authTitle: $("authTitle"),
     plansModal: $("plansModal"), plansList: $("plansList"), toast: $("toast"),
+    profileModal: $("profileModal"),
   };
 
   // ---------- State ----------
@@ -238,7 +239,17 @@
   });
 
   // ---------- Account menu ----------
+  function initials() {
+    if (!user) return "";
+    const src = (user.name || "").trim();
+    if (src) return src.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+    return user.email[0].toUpperCase();
+  }
   function renderAccount() {
+    const rail = $("railProfile");
+    if (user) { rail.classList.add("has-user"); rail.textContent = initials(); rail.dataset.tip = user.name || user.email; }
+    else { rail.classList.remove("has-user"); rail.innerHTML = RAIL_ICON; rail.dataset.tip = "Sign in"; }
+    if (!els.profileModal.hidden) renderProfile();
     const btn = els.accountBtn;
     if (!user) {
       btn.textContent = "Sign in"; btn.classList.remove("signed-in");
@@ -246,7 +257,7 @@
       setOnline(true);
       return;
     }
-    btn.textContent = user.email[0].toUpperCase();
+    btn.textContent = initials();
     btn.classList.add("signed-in");
     btn.title = user.email;
     $("amEmail").textContent = user.email;
@@ -292,6 +303,75 @@
     try { const { url } = await api("/api/billing/portal", { method: "POST" }); location.href = url; }
     catch (err) { toast(err.message, 5000); }
   }
+
+  // ---------- Profile ----------
+  const RAIL_ICON = $("railProfile").innerHTML;
+  function renderProfile() {
+    if (!user) return;
+    $("pfAvatar").textContent = initials();
+    $("profileTitle").textContent = user.name || "Your profile";
+    $("pfEmail").textContent = user.email;
+    $("pfSince").textContent = user.createdAt ? "Member since " + new Date(user.createdAt).toLocaleDateString([], { month: "long", year: "numeric" }) : "";
+    if (document.activeElement !== $("pfName")) $("pfName").value = user.name || "";
+    $("pfPlan").textContent = hasPlan() ? `${user.planName} plan` : "No active plan";
+    $("pfRenew").textContent = hasPlan()
+      ? (user.subStatus === "past_due" ? "Payment issue — update your card in billing" : user.renewsAt ? "Renews " + new Date(user.renewsAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "Active")
+      : "Choose a plan to start chatting with X09.";
+    $("pfPlanBtn").textContent = hasPlan() ? "Change plan" : "Choose a plan";
+    $("pfUsage").hidden = !hasPlan();
+    $("pfBilling").hidden = !user.hasBilling;
+    if (hasPlan()) {
+      const u = user.usage;
+      $("pfFast").textContent = `${fmtNum(u.fast)} / ${fmtNum(u.fastLimit)}`;
+      $("pfDeep").textContent = `${fmtNum(u.deep)} / ${fmtNum(u.deepLimit)}`;
+      $("pfFastBar").style.width = Math.min(100, (u.fast / u.fastLimit) * 100) + "%";
+      $("pfDeepBar").style.width = Math.min(100, (u.deep / u.deepLimit) * 100) + "%";
+      const next = new Date(); next.setUTCMonth(next.getUTCMonth() + 1, 1);
+      $("pfReset").textContent = `Usage resets ${next.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+    }
+  }
+  async function openProfile() {
+    if (!user) return showAuth("login");
+    toggleMenu(false); closeSide();
+    renderProfile(); openModal(els.profileModal);
+    refreshMe();
+  }
+  $("railProfile").addEventListener("click", openProfile);
+  $("amProfile").addEventListener("click", openProfile);
+  $("nameForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      user = (await api("/api/profile", { method: "POST", body: { name: $("pfName").value } })).user;
+      renderAccount(); renderProfile(); $("pfName").blur(); toast("Profile saved.");
+    } catch (err) { toast(err.message); }
+  });
+  $("pfPlanBtn").addEventListener("click", () => {
+    if (hasPlan() && user.hasBilling) return openPortal();
+    closeModal(els.profileModal); showPlans();
+  });
+  $("pfBilling").addEventListener("click", openPortal);
+  $("pwForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("pwError").textContent = "";
+    try {
+      await api("/api/auth/password", { method: "POST", body: { current: $("pwCurrent").value, next: $("pwNext").value } });
+      $("pwCurrent").value = $("pwNext").value = ""; $("pwDetails").open = false;
+      toast("Password updated. Other devices were signed out.");
+    } catch (err) { $("pwError").textContent = err.message; }
+  });
+  $("pfLogout").addEventListener("click", () => { closeModal(els.profileModal); $("amLogout").click(); });
+  $("delForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("delError").textContent = "";
+    if (!confirm("Permanently delete your X09 account and all missions?")) return;
+    try {
+      await api("/api/auth/delete", { method: "POST", body: { password: $("delPassword").value } });
+      closeModal(els.profileModal);
+      user = null; threads = []; currentId = null; messages = [];
+      renderAccount(); renderThreads(); renderMessages();
+      toast("Your account has been deleted.");
+    } catch (err) { $("delError").textContent = err.message; }
+  });
 
   async function refreshMe() {
     try { user = (await api("/api/me")).user; } catch {}

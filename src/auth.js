@@ -54,6 +54,8 @@ export function publicUser(user, usage) {
   return {
     id: user.id,
     email: user.email,
+    name: user.display_name || null,
+    createdAt: user.created_at,
     plan: plan ? user.plan : null,
     planName: plan ? plan.name : null,
     subStatus: user.sub_status || null,
@@ -129,4 +131,33 @@ export async function deleteAccount(request, env) {
     env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
   ]);
   return json({ ok: true }, 200, { "set-cookie": sessionCookie("", request, 0) });
+}
+
+// POST /api/profile  { name }
+export async function updateProfile(request, env) {
+  const user = await requireUser(request, env);
+  const body = await readJson(request);
+  const name = String(body?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  await env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(name || null, user.id).run();
+  const fresh = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(user.id).first();
+  return json({ user: publicUser(fresh, await usageThisMonth(env, user.id)) });
+}
+
+// POST /api/auth/password  { current, next }  — signs out other devices
+export async function changePassword(request, env) {
+  const user = await requireUser(request, env);
+  const body = await readJson(request);
+  const current = String(body?.current || ""), next = String(body?.next || "");
+  const { hash } = await hashPassword(current, user.pass_salt);
+  if (!safeEqual(hash, user.pass_hash)) return json({ error: "Current password is incorrect." }, 401);
+  if (next.length < 8) return json({ error: "New password must be at least 8 characters." }, 400);
+  if (next.length > 200) return json({ error: "New password is too long." }, 400);
+  const h = await hashPassword(next);
+  const token = getCookie(request, COOKIE);
+  const keep = token ? await sha256Hex(token) : "";
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET pass_hash = ?, pass_salt = ? WHERE id = ?").bind(h.hash, h.salt, user.id),
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").bind(user.id, keep),
+  ]);
+  return json({ ok: true });
 }

@@ -132,12 +132,36 @@ try {
   r = await api(`/api/threads/${threadId}`); assert.equal(r.status, 404); ok("threads are private to their owner");
   cookie = saved;
 
+  // Profile: display name
+  r = await api("/api/profile", { method: "POST", body: { name: "  Commander   Shepard  " } });
+  assert.equal(r.status, 200); assert.equal(r.data.user.name, "Commander Shepard");
+  r = await api("/api/me"); assert.equal(r.data.user.name, "Commander Shepard"); ok("display name saved and trimmed");
+
+  // Change password (wrong current → rejected; right → works, old one stops working)
+  r = await api("/api/auth/password", { method: "POST", body: { current: "nope-nope", next: "brand-new-pass" } });
+  assert.equal(r.status, 401); ok("password change needs the current password");
+  r = await api("/api/auth/password", { method: "POST", body: { current: "orbit-2026!", next: "short" } });
+  assert.equal(r.status, 400); ok("new password must be 8+ characters");
+  r = await api("/api/auth/password", { method: "POST", body: { current: "orbit-2026!", next: "brand-new-pass" } });
+  assert.equal(r.status, 200);
+  r = await api("/api/me"); assert.ok(r.data.user, "still signed in on this device"); ok("password changed, current session kept");
+
   // Logout / login
   await api("/api/auth/logout", { method: "POST" }); cookie = "";
   r = await api("/api/auth/login", { method: "POST", body: { email: "pilot@example.com", password: "wrong-pass" } });
   assert.equal(r.status, 401); ok("wrong password rejected");
   r = await api("/api/auth/login", { method: "POST", body: { email: "PILOT@example.com", password: "orbit-2026!" } });
-  assert.equal(r.status, 200); ok("login works (case-insensitive email)");
+  assert.equal(r.status, 401); ok("old password no longer works");
+  r = await api("/api/auth/login", { method: "POST", body: { email: "PILOT@example.com", password: "brand-new-pass" } });
+  assert.equal(r.status, 200); ok("login works with new password (case-insensitive email)");
+
+  // Delete account
+  r = await api("/api/auth/delete", { method: "POST", body: { password: "wrong" } });
+  assert.equal(r.status, 401); ok("delete account needs password");
+  r = await api("/api/auth/delete", { method: "POST", body: { password: "brand-new-pass" } });
+  assert.equal(r.status, 200); cookie = "";
+  r = await api("/api/auth/login", { method: "POST", body: { email: "pilot@example.com", password: "brand-new-pass" } });
+  assert.equal(r.status, 401); ok("deleted account is gone");
 
   console.log(`\nAll ${pass} checks passed.`);
 } catch (e) {

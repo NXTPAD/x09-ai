@@ -28,7 +28,9 @@
         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
       <div class="rail-spacer"></div>
-      <span class="rail-status" title="Status"><span class="pulse"></span></span>
+      <button class="rail-btn rail-avatar" id="railProfile" aria-label="Profile" data-tip="Profile">
+        <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      </button>
     </nav>
 
     <!-- HISTORY PANEL -->
@@ -77,6 +79,7 @@
                 <div class="meter"><div class="meter-top"><span>Deep</span><span class="mono" id="amDeep"></span></div><div class="bar"><i id="amDeepBar"></i></div></div>
                 <p class="am-note mono" id="amReset"></p>
               </div>
+              <button class="am-item am-strong" id="amProfile">Profile &amp; settings</button>
               <button class="am-item" id="amPlans">Change plan</button>
               <button class="am-item" id="amBilling">Manage billing</button>
               <button class="am-item" id="amLogout">Sign out</button>
@@ -161,6 +164,71 @@
       <p class="plans-sub">Full access to X09. Cancel anytime from your account.</p>
       <div class="plans" id="plansList"></div>
       <p class="fine">Secure checkout by Stripe · Prices in USD · Limits reset on the 1st of each month</p>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileTitle" hidden>
+    <div class="modal-card profile-card">
+      <button class="icon-btn modal-close" data-close aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="pf-head">
+        <div class="pf-avatar" id="pfAvatar">X</div>
+        <div class="pf-id">
+          <h2 id="profileTitle">Profile</h2>
+          <div class="pf-email" id="pfEmail"></div>
+          <div class="pf-since mono" id="pfSince"></div>
+        </div>
+      </div>
+
+      <section class="pf-sec">
+        <div class="pf-label mono">// Display name</div>
+        <form class="pf-row" id="nameForm">
+          <input id="pfName" maxlength="60" placeholder="What should X09 call you?" autocomplete="name" />
+          <button class="btn-ghost sm" type="submit">Save</button>
+        </form>
+      </section>
+
+      <section class="pf-sec">
+        <div class="pf-label mono">// Plan</div>
+        <div class="pf-plan">
+          <div><div class="pf-plan-name" id="pfPlan">No active plan</div><div class="pf-sub" id="pfRenew"></div></div>
+          <button class="btn-ghost sm" id="pfPlanBtn">Choose a plan</button>
+        </div>
+        <div id="pfUsage">
+          <div class="meter"><div class="meter-top"><span>Fast messages</span><span class="mono" id="pfFast"></span></div><div class="bar"><i id="pfFastBar"></i></div></div>
+          <div class="meter"><div class="meter-top"><span>Deep messages</span><span class="mono" id="pfDeep"></span></div><div class="bar"><i id="pfDeepBar"></i></div></div>
+          <div class="pf-sub" id="pfReset"></div>
+        </div>
+        <button class="link-btn pf-link" id="pfBilling">Manage billing &amp; invoices →</button>
+      </section>
+
+      <section class="pf-sec">
+        <div class="pf-label mono">// Security</div>
+        <details class="pf-details" id="pwDetails">
+          <summary>Change password</summary>
+          <form class="pf-stack" id="pwForm">
+            <input type="password" id="pwCurrent" placeholder="Current password" autocomplete="current-password" />
+            <input type="password" id="pwNext" placeholder="New password (8+ characters)" autocomplete="new-password" />
+            <p class="form-error" id="pwError" role="alert"></p>
+            <button class="btn-primary sm" type="submit">Update password</button>
+          </form>
+        </details>
+      </section>
+
+      <section class="pf-sec pf-actions">
+        <button class="btn-ghost" id="pfLogout">Sign out</button>
+        <details class="pf-details danger" id="delDetails">
+          <summary>Delete account</summary>
+          <form class="pf-stack" id="delForm">
+            <p class="pf-sub">This permanently deletes your account and mission log. Cancel your plan in billing first so you aren't charged again.</p>
+            <input type="password" id="delPassword" placeholder="Enter your password to confirm" autocomplete="current-password" />
+            <p class="form-error" id="delError" role="alert"></p>
+            <button class="btn-danger" type="submit">Delete my account</button>
+          </form>
+        </details>
+      </section>
     </div>
   </div>
 

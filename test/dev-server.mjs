@@ -12,7 +12,8 @@ const PORT = Number(process.env.PORT || 8787);
 
 // ---- D1 stand-in ----
 const sqlite = new DatabaseSync(process.env.DB_FILE || ":memory:");
-sqlite.exec(fs.readFileSync(path.join(ROOT, "migrations/0001_init.sql"), "utf8"));
+for (const f of fs.readdirSync(path.join(ROOT, "migrations")).filter((f) => f.endsWith(".sql")).sort())
+  sqlite.exec(fs.readFileSync(path.join(ROOT, "migrations", f), "utf8"));
 class Stmt {
   constructor(sql, args = []) { this.sql = sql; this.args = args; }
   bind(...a) { return new Stmt(this.sql, a); }
