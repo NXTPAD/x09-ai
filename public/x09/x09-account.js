@@ -95,7 +95,7 @@
       auth.querySelector(".x09-body").innerHTML = `
         <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
         <div class="x09-logo modal-logo" data-x09-logo="46"></div>
-        <p class="kicker mono">// One X09 account · every X09 site</p>
+        <p class="kicker">One X09 account · every X09 app</p>
         <h2 id="x09AuthTitle">Sign in to X09</h2>
         <div class="tabs" role="tablist">
           <button role="tab" aria-selected="true" data-tab="login">Sign in</button>
@@ -208,7 +208,7 @@
         </div>
       </div>
       <section class="pf-sec">
-        <div class="pf-label mono">// Profile · shown on every X09 site</div>
+        <div class="pf-label">Profile · shown on every X09 app</div>
         <form id="x09ProfileForm" class="pf-stack" style="margin-top:0">
           <div class="x09-grid2">
             <label>Display name<input name="name" maxlength="60" value="${esc(u.name || "")}" placeholder="What should X09 call you?" autocomplete="name" /></label>
@@ -221,14 +221,14 @@
         </form>
       </section>
       <section class="pf-sec">
-        <div class="pf-label mono">// Your X09 plans</div>
+        <div class="pf-label">Your X09 plans</div>
         <div class="x09-prods">${prods}</div>
         ${u.guide?.limit ? `<p class="pf-sub" style="margin-top:12px">Ask X09 on the Hub: ${fmt(u.guide.used)} / ${fmt(u.guide.limit)} questions this month · included with any plan</p>` : ""}
         ${u.hasBilling ? '<button class="link-btn pf-link" data-portal>Manage billing &amp; invoices →</button>' : ""}
         <p class="fine" style="text-align:left">Secure checkout by Stripe · one bill profile for every X09 product · cancel anytime</p>
       </section>
       <section class="pf-sec">
-        <div class="pf-label mono">// Security</div>
+        <div class="pf-label">Security</div>
         <details class="pf-details">
           <summary>Change password</summary>
           <form class="pf-stack" id="x09PwForm">
@@ -365,5 +365,6 @@
     if (onUser) listeners.push(onUser);
     document.querySelectorAll("[data-x09-logo]").forEach((el) => X.mountLogo(el, Number(el.dataset.x09Logo) || 28));
     document.querySelectorAll("[data-x09-switcher]").forEach((el) => X.mountSwitcher(el));
+    document.querySelectorAll(".rail").forEach((el) => el.setAttribute("data-dock", ""));
   };
 })();

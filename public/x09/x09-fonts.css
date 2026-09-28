@@ -1,4 +1,4 @@
 /* X09 fonts only (for pages that don't use the full design system, e.g. Docs client links) */
-@font-face { font-family: "Michroma"; src: url("/x09/fonts/michroma.woff") format("woff"); font-display: swap; }
-@font-face { font-family: "Space Grotesk"; src: url("/x09/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Unbounded"; src: url("/x09/fonts/unbounded.woff") format("woff"); font-weight: 200 900; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/x09/fonts/manrope.woff") format("woff"); font-weight: 200 800; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/x09/fonts/jetbrains-mono.woff") format("woff"); font-weight: 100 800; font-display: swap; }

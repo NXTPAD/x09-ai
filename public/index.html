@@ -34,7 +34,7 @@
     <!-- HISTORY PANEL -->
     <aside class="panel" id="sidebar" aria-label="Mission log">
       <div class="panel-head">
-        <span class="label mono">// Mission log</span>
+        <span class="label">Chats</span>
         <button class="icon-btn" id="closeSide" aria-label="Close">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
@@ -98,14 +98,14 @@
         <div class="orbits" aria-hidden="true"><i></i><i></i><i></i></div>
 
         <div class="empty" id="empty">
-          <p class="kicker mono">// Channel open</p>
+          <p class="kicker">Your AI co-pilot</p>
           <h1 id="greeting">Hello.</h1>
           <p class="sub">What's the mission?</p>
         </div>
 
         <form class="composer" id="composer" autocomplete="off" data-x09-solid>
           <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
-          <textarea id="input" rows="1" placeholder="Transmit to X09…" aria-label="Message X09" maxlength="6000"></textarea>
+          <textarea id="input" rows="1" placeholder="Ask X09 anything…" aria-label="Message X09" maxlength="6000"></textarea>
           <div class="composer-row">
             <span class="mono meta" id="charCount">Enter to send · Shift+Enter new line</span>
             <button class="send" id="send" type="submit" aria-label="Send" disabled data-magnet>
@@ -136,7 +136,7 @@
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
       <span class="modal-logo" data-x09-logo="46"></span>
-      <p class="kicker mono">// Identify, commander</p>
+      <p class="kicker">One X09 account · every X09 app</p>
       <h2 id="authTitle">Sign in to X09</h2>
       <div class="tabs" role="tablist">
         <button role="tab" aria-selected="true" data-tab="login">Sign in</button>
@@ -158,7 +158,7 @@
       <button class="icon-btn modal-close" data-close aria-label="Close">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
-      <p class="kicker mono">// Choose your trajectory</p>
+      <p class="kicker">Plans</p>
       <h2 id="plansTitle">Pick a plan to launch</h2>
       <p class="plans-sub">Full access to X09. Cancel anytime from your account.</p>
       <div class="plans" id="plansList"></div>

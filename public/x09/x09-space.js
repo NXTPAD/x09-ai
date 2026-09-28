@@ -18,6 +18,9 @@
   const TAU = Math.PI * 2;
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Aurora palette (violet, cyan, rose) used for rim light, sparks and tinted stars
+  const HUES = ["139,108,255", "69,212,255", "255,122,192"];
+  const pick = () => HUES[Math.floor(Math.random() * HUES.length)];
   const INTERACTIVE = "a,button,input,textarea,select,label,summary,[contenteditable],[role=dialog],[role=menu],.no-space,pre,code";
 
   function sprite(size, draw) {
@@ -109,7 +112,7 @@
     }
     makeStar() {
       const z = Math.random(), a = rand(0, TAU), s = 5 + z * 18;
-      return { x: rand(0, this.W), y: rand(0, this.H), z, r: 0.3 + z * 1.25, vx: Math.cos(a) * s, vy: Math.sin(a) * s, wob: rand(0, TAU), ws: rand(0.2, 0.7), tw: rand(0, TAU) };
+      return { hue: Math.random() < 0.14 ? pick() : "255,255,255", x: rand(0, this.W), y: rand(0, this.H), z, r: 0.3 + z * 1.25, vx: Math.cos(a) * s, vy: Math.sin(a) * s, wob: rand(0, TAU), ws: rand(0.2, 0.7), tw: rand(0, TAU) };
     }
     spawnBodies() {
       const area = this.W * this.H;
@@ -125,7 +128,7 @@
         kind, r, m: r * r,
         x: x ?? rand(r, this.W - r), y: y ?? rand(r, this.H - r),
         vx: rand(-22, 22), vy: rand(-22, 22), a: rand(0, TAU), va: rand(-0.6, 0.6),
-        cruise: rand(8, 20), tilt: rand(-0.5, 0.5), glow: 0,
+        cruise: rand(8, 20), tilt: rand(-0.5, 0.5), glow: 0, hue: pick(),
       };
       if (kind === "rock") b.img = makeRock(r, this.dpr);
       else { b.img = makeMoonTexture(r, this.dpr); b.shade = makeShade(r, this.dpr); }
@@ -229,10 +232,10 @@
       }
       this.burst(x, y, 24);
     }
-    burst(x, y, n = 10, speed = 160) {
+    burst(x, y, n = 10, speed = 160, hue) {
       for (let i = 0; i < n; i++) {
         const a = rand(0, TAU), s = rand(0.3, 1) * speed;
-        this.sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(0.5, 1) });
+        this.sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(0.5, 1), hue: hue || pick() });
       }
     }
 
@@ -329,7 +332,7 @@
         a.vx -= jn * nx * ima; a.vy -= jn * ny * ima; b.vx += jn * nx * imb; b.vy += jn * ny * imb;
         const vt = -rvx * ny + rvy * nx; // tangential slip → spin
         a.va += vt * 0.02 * (b.m / (a.m + b.m)); b.va -= vt * 0.02 * (a.m / (a.m + b.m));
-        if (-vn > 90) { this.burst(a.x + nx * a.r, a.y + ny * a.r, Math.min(12, Math.round(-vn / 40)), -vn * 0.5); a.glow = b.glow = Math.min(1, -vn / 400); }
+        if (-vn > 90) { this.burst(a.x + nx * a.r, a.y + ny * a.r, Math.min(12, Math.round(-vn / 40)), -vn * 0.5, a.hue); a.glow = b.glow = Math.min(1, -vn / 400); }
       }
 
       for (const s of this.sparks) { s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 1 - dt * 2; s.vy *= 1 - dt * 2; s.life -= dt * 1.6; }
@@ -346,8 +349,8 @@
       this.px += (this.tx - this.px) * 0.05; this.py += (this.ty - this.py) * 0.05;
 
       // stars
-      g.fillStyle = "#fff";
       for (const s of this.stars) {
+        g.fillStyle = `rgb(${s.hue})`;
         if (!R) {
           s.wob += s.ws * dt;
           const turn = Math.sin(s.wob) * 0.25 * dt, c = Math.cos(turn), n = Math.sin(turn);
@@ -379,7 +382,7 @@
         for (const s of this.shooters) {
           s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 0.9;
           const tail = 0.12, gr = g.createLinearGradient(s.x, s.y, s.x - s.vx * tail, s.y - s.vy * tail);
-          gr.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+          gr.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`); gr.addColorStop(0.3, `rgba(69,212,255,${Math.max(s.life, 0) * 0.6})`); gr.addColorStop(1, "rgba(139,108,255,0)");
           g.globalAlpha = 1; g.strokeStyle = gr; g.lineWidth = 1.5; g.lineCap = "round";
           g.beginPath(); g.moveTo(s.x, s.y); g.lineTo(s.x - s.vx * tail, s.y - s.vy * tail); g.stroke();
         }
@@ -390,14 +393,14 @@
       if (p.well > 0) {
         const rr = 26 + p.well * 34;
         const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 2.2);
-        gr.addColorStop(0, `rgba(0,0,0,${0.9 * Math.min(1, p.well)})`); gr.addColorStop(0.35, `rgba(255,255,255,${0.12 * p.well})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+        gr.addColorStop(0, `rgba(0,0,0,${0.9 * Math.min(1, p.well)})`); gr.addColorStop(0.35, `rgba(139,108,255,${0.28 * p.well})`); gr.addColorStop(0.7, `rgba(69,212,255,${0.08 * p.well})`); gr.addColorStop(1, "rgba(69,212,255,0)");
         g.globalAlpha = 1; g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, TAU); g.fill();
-        g.strokeStyle = `rgba(255,255,255,${0.35 * Math.min(1, p.well)})`; g.lineWidth = 1;
+        g.strokeStyle = `rgba(190,175,255,${0.5 * Math.min(1, p.well)})`; g.lineWidth = 1;
         g.setLineDash([3, 6]); g.lineDashOffset = -performance.now() / 30;
         g.beginPath(); g.arc(p.x, p.y, rr, 0, TAU); g.stroke(); g.setLineDash([]);
       }
       for (const w of this.waves) {
-        g.globalAlpha = Math.max(0, w.life) * 0.6; g.strokeStyle = "#fff"; g.lineWidth = 1.5;
+        g.globalAlpha = Math.max(0, w.life) * 0.7; g.strokeStyle = "rgb(139,108,255)"; g.lineWidth = 2;
         g.beginPath(); g.arc(w.x, w.y, w.r, 0, TAU); g.stroke();
       }
 
@@ -406,25 +409,30 @@
         g.globalAlpha = op * (0.55 + 0.45 * Math.min(1, b.r / 18));
         if (b.glow > 0) {
           const gr = g.createRadialGradient(b.x, b.y, b.r * 0.8, b.x, b.y, b.r * 2.4);
-          gr.addColorStop(0, `rgba(255,255,255,${0.22 * b.glow})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+          gr.addColorStop(0, `rgba(${b.hue},${0.35 * b.glow})`); gr.addColorStop(1, `rgba(${b.hue},0)`);
           g.fillStyle = gr; g.beginPath(); g.arc(b.x, b.y, b.r * 2.4, 0, TAU); g.fill();
         }
         const S = b.img.width / this.dpr;
         if (b.kind === "ringed") this.drawRing(g, b, false);
         g.save(); g.translate(b.x, b.y); g.rotate(b.a); g.drawImage(b.img, -S / 2, -S / 2, S, S); g.restore();
         if (b.shade) g.drawImage(b.shade, b.x - S / 2, b.y - S / 2, S, S);
+        // aurora rim light from the lower right
+        g.globalCompositeOperation = "lighter";
+        const rim = g.createRadialGradient(b.x + b.r * 0.55, b.y + b.r * 0.5, 0, b.x + b.r * 0.4, b.y + b.r * 0.35, b.r * 1.15);
+        rim.addColorStop(0, `rgba(${b.hue},.55)`); rim.addColorStop(1, `rgba(${b.hue},0)`);
+        g.fillStyle = rim; g.beginPath(); g.arc(b.x, b.y, b.r, 0, TAU); g.fill();
+        g.globalCompositeOperation = "source-over";
         if (b.kind === "ringed") this.drawRing(g, b, true);
       }
 
-      g.fillStyle = "#fff";
-      for (const s of this.sparks) { g.globalAlpha = Math.max(0, s.life) * op; g.fillRect(s.x - 1, s.y - 1, 2, 2); }
+      for (const s of this.sparks) { g.fillStyle = `rgb(${s.hue})`; g.globalAlpha = Math.max(0, s.life) * op; g.fillRect(s.x - 1, s.y - 1, 2.2, 2.2); }
       g.globalAlpha = 1;
     }
     drawRing(g, b, front) {
       g.save(); g.translate(b.x, b.y); g.rotate(b.tilt + Math.sin(b.a * 0.3) * 0.25);
       g.beginPath();
       g.ellipse(0, 0, b.r * 1.9, b.r * 0.5, 0, front ? 0 : Math.PI, front ? Math.PI : TAU);
-      g.strokeStyle = front ? "rgba(255,255,255,.85)" : "rgba(255,255,255,.35)"; g.lineWidth = Math.max(1.2, b.r * 0.12); g.stroke();
+      g.strokeStyle = front ? `rgba(${b.hue},.9)` : `rgba(${b.hue},.35)`; g.lineWidth = Math.max(1.2, b.r * 0.12); g.stroke();
       g.restore();
     }
 
@@ -463,6 +471,31 @@
         el.style.transform = el.hasAttribute("data-magnet")
           ? `translate(${s.x.toFixed(2)}px, ${s.y.toFixed(2)}px)`
           : `perspective(900px) rotateY(${s.x.toFixed(2)}deg) rotateX(${s.y.toFixed(2)}deg)`;
+      }
+      requestAnimationFrame(tick);
+    })(last);
+  }
+
+  // ---------- Dock magnification (like the macOS dock): items near the pointer grow on springs ----------
+  function dock() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !matchMedia("(pointer: fine)").matches) return;
+    const docks = () => [...document.querySelectorAll("[data-dock]")];
+    const state = new Map();
+    let py = -1e4, px = -1e4;
+    addEventListener("pointermove", (e) => { px = e.clientX; py = e.clientY; }, { passive: true });
+    let last = performance.now();
+    (function tick(now) {
+      const dt = Math.min(0.033, (now - last) / 1000); last = now;
+      for (const d of docks()) {
+        const r = d.getBoundingClientRect();
+        const over = px > r.left - 20 && px < r.right + 60 && py > r.top && py < r.bottom;
+        for (const el of d.querySelectorAll(":scope > a, :scope > button")) {
+          const s = state.get(el) || { v: 1, vel: 0 }; state.set(el, s);
+          const er = el.getBoundingClientRect(), cy = er.top + er.height / 2;
+          const dist = Math.abs(py - cy), target = over ? 1 + 0.42 * Math.max(0, 1 - dist / 120) : 1;
+          s.vel += ((target - s.v) * 260 - s.vel * 20) * dt; s.v += s.vel * dt;
+          el.style.transform = Math.abs(s.v - 1) < 0.002 ? "" : `scale(${s.v.toFixed(3)})`;
+        }
       }
       requestAnimationFrame(tick);
     })(last);
@@ -507,7 +540,7 @@
   }
 
   window.X09Space = {
-    start(opts) { const s = new Space(opts); springs(); window.X09Space.instance = s; return s; },
+    start(opts) { const s = new Space(opts); springs(); dock(); window.X09Space.instance = s; return s; },
     logo,
   };
 })();
