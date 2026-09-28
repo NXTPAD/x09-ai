@@ -3,14 +3,15 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "X09 AI — paid AI chat app on Cloudflare Workers + D1 + Stripe",
+  "description": "X09 AI — AI chat on Cloudflare Workers + shared X09 D1 + Stripe + Claude",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler d1 migrations apply x09-db --remote && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply x09-db --local",
     "db:migrate": "wrangler d1 migrations apply x09-db --remote",
     "test": "node --experimental-sqlite --no-warnings test/api.test.mjs && node test/anthropic.test.mjs",
-    "test:server": "node --experimental-sqlite --no-warnings test/dev-server.mjs"
+    "test:server": "node --experimental-sqlite --no-warnings test/dev-server.mjs",
+    "build": "node scripts/setup-db.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
