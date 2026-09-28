@@ -34,6 +34,7 @@ try {
   // Plans
   let r = await api("/api/plans");
   assert.equal(r.data.plans.length, 3); ok("lists 3 paid plans");
+  assert.deepEqual(r.data.catalog.map((p) => p.key), ["ai", "docs"]); ok("catalog lists every X09 product");
 
   // Signed out
   r = await api("/api/me"); assert.equal(r.data.user, null); ok("signed-out /api/me");
@@ -48,7 +49,7 @@ try {
 
   // Signup
   r = await api("/api/auth/signup", { method: "POST", body: { email: "Pilot@Example.com", password: "orbit-2026!" } });
-  assert.equal(r.status, 201); assert.equal(r.data.user.plan, null); assert.ok(cookie.startsWith("x09_session="));
+  assert.equal(r.status, 201); assert.equal(r.data.user.plan, null); assert.ok(cookie.startsWith("x09_sid="));
   const userId = r.data.user.id; ok("signup creates account + session, no plan");
   r = await api("/api/auth/signup", { method: "POST", body: { email: "pilot@example.com", password: "orbit-2026!" } });
   assert.equal(r.status, 409); ok("duplicate email rejected");
@@ -82,8 +83,10 @@ try {
   r = await api("/api/stripe/webhook", { method: "POST", body: evt, headers: signed(evt) });
   assert.equal(r.status, 200);
   let u = (await api("/api/me")).data.user;
-  assert.equal(u.plan, "commander"); assert.equal(u.usage.fastLimit, 5000); assert.equal(u.usage.deepLimit, 600);
-  ok("signed webhook activates Commander plan");
+  assert.equal(u.plan, "commander"); assert.equal(u.usage.fastLimit, 1600); assert.equal(u.usage.deepLimit, 160);
+  assert.equal(u.products.ai.planName, "Commander"); assert.equal(u.products.docs.plan, null);
+  assert.equal(u.guide.limit, 100);
+  ok("signed webhook activates Commander plan (shared subscriptions table)");
 
   // Chat streams + saves
   let res = await api("/api/chat", { method: "POST", body: { message: "Hello X09", mode: "fast" }, raw: true });
@@ -111,13 +114,25 @@ try {
   r = await api("/api/threads"); assert.equal(r.data.threads.length, 1); ok("threads listed");
 
   // Limit enforcement
-  await env.DB.prepare("UPDATE usage SET deep = 600 WHERE user_id = ?").bind(userId).run();
+  await env.DB.prepare("UPDATE usage SET deep = 160 WHERE user_id = ?").bind(userId).run();
   r = await api("/api/chat", { method: "POST", body: { message: "x", mode: "deep", threadId } });
   assert.equal(r.status, 402); assert.equal(r.data.code, "limit_reached"); ok("monthly Deep limit enforced");
 
   // Portal (already subscribed checkout → portal)
   r = await api("/api/billing/checkout", { method: "POST", body: { plan: "fleet" } });
   assert.match(r.data.url, /portal=1/); ok("subscribed users are sent to billing portal to switch plans");
+
+  // Cross-product: buy X09 Docs from the X09 AI site with the same Stripe customer
+  r = await api("/api/billing/checkout", { method: "POST", body: { product: "docs", plan: "pro" } });
+  const cs2 = stripeCalls.filter((c) => c.path === "/checkout/sessions").pop();
+  assert.equal(cs2.params["line_items[0][price]"], "price_pro"); assert.equal(cs2.params["customer"], cs.params["customer"]);
+  ok("any X09 plan can be bought from any site, one Stripe customer");
+  const docsSub = { id: "sub_docs", customer: cs.params["customer"], status: "active", metadata: { user_id: userId },
+    items: { data: [{ price: { id: "price_pro" }, current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400 }] } };
+  const e2 = JSON.stringify({ type: "customer.subscription.created", data: { object: docsSub } });
+  await api("/api/stripe/webhook", { method: "POST", body: e2, headers: signed(e2) });
+  u = (await api("/api/me")).data.user;
+  assert.equal(u.products.docs.plan, "pro"); assert.equal(u.plan, "commander"); ok("X09 Docs plan shows up on the X09 AI account too");
 
   // Cancellation via webhook
   const del = JSON.stringify({ type: "customer.subscription.deleted", data: { object: { ...sub, status: "canceled" } } });
@@ -136,6 +151,20 @@ try {
   r = await api("/api/profile", { method: "POST", body: { name: "  Commander   Shepard  " } });
   assert.equal(r.status, 200); assert.equal(r.data.user.name, "Commander Shepard");
   r = await api("/api/me"); assert.equal(r.data.user.name, "Commander Shepard"); ok("display name saved and trimmed");
+  const px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  r = await api("/api/profile", { method: "POST", body: { company: "Orbit Roofing", avatar: px } });
+  assert.equal(r.data.user.company, "Orbit Roofing"); assert.equal(r.data.user.avatar, px); assert.equal(r.data.user.name, "Commander Shepard");
+  ok("company + profile photo saved (shared profile)");
+  r = await api("/api/profile", { method: "POST", body: { avatar: "javascript:alert(1)" } });
+  assert.equal(r.status, 400); ok("non-image profile photos rejected");
+
+  // Old per-site cookie still works (people stay signed in after the switch)
+  const tok = "legacy" + "0".repeat(58);
+  await env.DB.prepare("INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
+    .bind(crypto.createHash("sha256").update(tok).digest("hex"), userId, Date.now() + 864e5, Date.now()).run();
+  const keep = cookie; cookie = `x09_session=${tok}`;
+  r = await api("/api/me"); assert.equal(r.data.user.id, userId); ok("legacy x09_session cookie still signs you in");
+  cookie = keep;
 
   // Change password (wrong current → rejected; right → works, old one stops working)
   r = await api("/api/auth/password", { method: "POST", body: { current: "nope-nope", next: "brand-new-pass" } });
@@ -162,6 +191,7 @@ try {
   assert.equal(r.status, 200); cookie = "";
   r = await api("/api/auth/login", { method: "POST", body: { email: "pilot@example.com", password: "brand-new-pass" } });
   assert.equal(r.status, 401); ok("deleted account is gone");
+  assert.ok(stripeCalls.some((c) => c.method === "DELETE" && c.path === "/subscriptions/sub_docs")); ok("deleting the account cancels active X09 plans");
 
   console.log(`\nAll ${pass} checks passed.`);
 } catch (e) {

@@ -1,7 +1,7 @@
 // Temporary tool: generate the demo-video voiceover with Workers AI (Deepgram Aura 2).
 // Visit /api/voice-demo?key=<KEY> to preview voices and download a WAV.
 // Safe to delete this file (and its two routes in worker.js) once the video is done.
-import { json } from "./util.js";
+import { json } from "./core/util.js";
 
 const KEY = "x09-vo-7f3k9q";
 const MODEL = "@cf/deepgram/aura-2-en";

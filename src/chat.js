@@ -1,7 +1,9 @@
-// Chat: threads stored in D1, replies streamed from Workers AI, monthly plan limits enforced
-import { json, now, month, randomId, readJson, HttpError } from "./util.js";
-import { requireUser, hasAccess } from "./auth.js";
-import { PLANS } from "./plans.js";
+// Chat: threads stored in the shared X09 database, replies streamed from Claude (Anthropic API),
+// monthly plan limits enforced. Fast = Claude Haiku 4.5, Deep = Claude Sonnet 5.
+import { json, now, randomId, readJson, HttpError } from "./core/util.js";
+import { requireUser, hasAccess, activePlan, consume } from "./core/auth.js";
+import { PRODUCTS } from "./core/catalog.js";
+import { claudeStream, teeText } from "./core/anthropic.js";
 
 const SYSTEM_PROMPTS = {
   fast:
@@ -13,7 +15,7 @@ const SYSTEM_PROMPTS = {
 };
 const HISTORY = 20;          // messages of context sent to the model
 const MAX_INPUT = 6000;      // characters per message
-const MAX_CONTEXT = 24000;   // characters of history per request (~6k tokens) — caps AI cost per message
+const MAX_CONTEXT = 16000;   // characters of history per request (~4k tokens) — caps AI cost per message
 
 // ---------- Threads ----------
 async function ownThread(env, userId, id) {
@@ -59,85 +61,19 @@ export async function deleteAllThreads(request, env) {
 }
 
 // ---------- Usage ----------
-async function consume(env, user, mode) {
-  const plan = PLANS[user.plan];
+function consumeMsg(env, user, mode) {
+  const key = activePlan(user, "ai");
+  const plan = PRODUCTS.ai.plans[key];
   const col = mode === "deep" ? "deep" : "fast";
-  const limit = plan[col];
-  const period = month();
-  await env.DB.prepare("INSERT INTO usage (user_id, period, fast, deep) VALUES (?, ?, 0, 0) ON CONFLICT(user_id, period) DO NOTHING")
-    .bind(user.id, period).run();
-  const r = await env.DB.prepare(`UPDATE usage SET ${col} = ${col} + 1 WHERE user_id = ? AND period = ? AND ${col} < ?`)
-    .bind(user.id, period, limit).run();
-  if (!r.meta || !r.meta.changes) {
-    throw new HttpError(402, `You've used all ${limit.toLocaleString()} ${col === "deep" ? "Deep" : "Fast"} messages in your ${plan.name} plan this month. Upgrade for more, or wait until next month.`, { code: "limit_reached" });
-  }
-  return async () => {
-    await env.DB.prepare(`UPDATE usage SET ${col} = MAX(${col} - 1, 0) WHERE user_id = ? AND period = ?`).bind(user.id, period).run();
-  };
-}
-
-// ---------- AI ----------
-function mockStream(messages) {
-  const last = messages[messages.length - 1]?.content || "";
-  const text = `**X09 test mode** — the real AI isn't connected in this environment.\n\nYou said: "${last.slice(0, 200)}"\n\nOnce deployed with the Workers AI binding, replies stream here word by word.`;
-  const words = text.split(/(?<= )/);
-  const enc = new TextEncoder();
-  return new ReadableStream({
-    async start(ctrl) {
-      for (const w of words) {
-        ctrl.enqueue(enc.encode(`data: ${JSON.stringify({ response: w })}\n\n`));
-        await new Promise((r) => setTimeout(r, 15));
-      }
-      ctrl.enqueue(enc.encode("data: [DONE]\n\n"));
-      ctrl.close();
-    },
-  });
-}
-
-async function runModel(env, mode, messages) {
-  if (env.MOCK_AI === "1" || !env.AI) {
-    if (env.MOCK_AI === "1") return mockStream(messages);
-    throw new HttpError(500, "The AI engine isn't connected (missing [ai] binding).");
-  }
-  const model = mode === "deep" ? env.AI_MODEL_DEEP : env.AI_MODEL;
-  return env.AI.run(model, {
-    messages: [{ role: "system", content: SYSTEM_PROMPTS[mode] }, ...messages],
-    max_tokens: mode === "deep" ? 1500 : 700,
-    stream: true,
-  });
-}
-
-// Pass the SSE stream through to the browser while collecting the text to save afterwards
-function tee(stream, onDone) {
-  const dec = new TextDecoder();
-  let buf = "", text = "";
-  const parse = (line) => {
-    if (!line.startsWith("data:")) return;
-    const d = line.slice(5).trim();
-    if (!d || d === "[DONE]") return;
-    try { const j = JSON.parse(d); text += j.response ?? j.choices?.[0]?.delta?.content ?? ""; } catch {}
-  };
-  return stream.pipeThrough(
-    new TransformStream({
-      transform(chunk, ctrl) {
-        ctrl.enqueue(chunk);
-        buf += dec.decode(chunk, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop();
-        lines.forEach(parse);
-      },
-      async flush() {
-        parse(buf);
-        await onDone(text);
-      },
-    })
-  );
+  const limit = plan.limits[col];
+  return consume(env, user.id, col, limit,
+    `You've used all ${limit.toLocaleString()} ${col === "deep" ? "Deep" : "Fast"} messages in your ${plan.name} plan this month. Upgrade for more, or wait until next month.`);
 }
 
 // POST /api/chat  { threadId?, message?, mode: "fast"|"deep", regenerate?: bool }
 export async function chat(request, env, ctx) {
   const user = await requireUser(request, env);
-  if (!hasAccess(user)) throw new HttpError(402, "Choose a plan to start chatting with X09.", { code: "plan_required" });
+  if (!hasAccess(user, "ai")) throw new HttpError(402, "Choose a plan to start chatting with X09.", { code: "plan_required" });
 
   const body = await readJson(request);
   if (!body) return json({ error: "Invalid JSON" }, 400);
@@ -161,11 +97,11 @@ export async function chat(request, env, ctx) {
         .bind(thread.id, user.id, title, now(), now()).run();
     }
     // Check the limit before saving the message
-    refund = await consume(env, user, mode);
+    refund = await consumeMsg(env, user, mode);
     await env.DB.prepare("INSERT INTO messages (thread_id, role, content, created_at) VALUES (?, 'user', ?, ?)")
       .bind(thread.id, message, now()).run();
   }
-  if (!refund) refund = await consume(env, user, mode);
+  if (!refund) refund = await consumeMsg(env, user, mode);
 
   const { results } = await env.DB.prepare(
     "SELECT role, content FROM (SELECT id, role, content FROM messages WHERE thread_id = ? ORDER BY id DESC LIMIT ?) ORDER BY id"
@@ -183,11 +119,16 @@ export async function chat(request, env, ctx) {
 
   let stream;
   try {
-    stream = await runModel(env, mode, context);
+    stream = await claudeStream(env, {
+      kind: mode,
+      system: SYSTEM_PROMPTS[mode] + (user.display_name ? ` The user's name is ${user.display_name}.` : ""),
+      messages: context,
+      max_tokens: mode === "deep" ? 2048 : 1024,
+    });
   } catch (err) {
     await refund();
     if (err instanceof HttpError) throw err;
-    throw new HttpError(502, "Signal lost — the AI engine returned an error. Please try again.");
+    throw new HttpError(502, "Signal lost — the AI returned an error. Please try again.");
   }
 
   const save = async (text) => {
@@ -198,7 +139,7 @@ export async function chat(request, env, ctx) {
     ]);
   };
 
-  return new Response(tee(stream, save), {
+  return new Response(teeText(stream, save), {
     headers: {
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-store",

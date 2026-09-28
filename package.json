@@ -9,7 +9,7 @@
     "deploy": "wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply x09-db --local",
     "db:migrate": "wrangler d1 migrations apply x09-db --remote",
-    "test": "node --experimental-sqlite --no-warnings test/api.test.mjs",
+    "test": "node --experimental-sqlite --no-warnings test/api.test.mjs && node test/anthropic.test.mjs",
     "test:server": "node --experimental-sqlite --no-warnings test/dev-server.mjs"
   },
   "devDependencies": {

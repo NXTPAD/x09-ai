@@ -9,11 +9,13 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
 
-# Workers AI powers the chat
+# Workers AI binding — only used by the temporary voiceover tool (src/voice.js).
+# The chat itself runs on Claude via the Anthropic API.
 [ai]
 binding = "AI"
 
-# Database for accounts, chats, usage.
+# The SHARED X09 database (accounts, profiles, plans, chats, documents) — the same
+# x09-db is bound by X09 Hub, X09 AI and X09 Docs, so one account works everywhere.
 # The GitHub deploy finds this database by name and fills in the ID automatically.
 # (Deploying by hand instead? Run: npx wrangler d1 create x09-db, then paste the ID below.)
 [[d1_databases]]
@@ -23,15 +25,21 @@ database_id = "PASTE_YOUR_D1_DATABASE_ID"
 migrations_dir = "migrations"
 
 [vars]
-AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast"        # Fast mode
-AI_MODEL_DEEP = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"  # Deep mode
+# Claude models (Anthropic API)
+AI_MODEL_FAST = "claude-haiku-4-5"   # Fast mode
+AI_MODEL_DEEP = "claude-sonnet-5"    # Deep mode
 
 # Stripe Price IDs — OPTIONAL. Leave as-is and the app finds the active monthly price of the
-# Stripe products named "Pilot", "Commander" and "Fleet" automatically.
+# Stripe products named in src/core/catalog.js automatically
+# ("Pilot", "Commander", "Fleet", "X09 Docs Solo", "X09 Docs Pro", "X09 Docs Business").
 STRIPE_PRICE_PILOT = "price_REPLACE_ME"
 STRIPE_PRICE_COMMANDER = "price_REPLACE_ME"
 STRIPE_PRICE_FLEET = "price_REPLACE_ME"
+STRIPE_PRICE_SOLO = "price_REPLACE_ME"
+STRIPE_PRICE_PRO = "price_REPLACE_ME"
+STRIPE_PRICE_BUSINESS = "price_REPLACE_ME"
 
 # Secrets — set with `npx wrangler secret put NAME` (never commit these):
+#   ANTHROPIC_API_KEY       sk-ant-...  (console.anthropic.com → API keys)
 #   STRIPE_SECRET_KEY       sk_live_... (or sk_test_... while testing)
 #   STRIPE_WEBHOOK_SECRET   whsec_...

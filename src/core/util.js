@@ -1,4 +1,4 @@
-// Shared helpers
+// Shared helpers (X09 core — identical in every X09 repo)
 
 export const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -60,4 +60,12 @@ export class HttpError extends Error {
     this.status = status;
     this.extra = extra;
   }
+}
+
+// Sessions are shared by every X09 site: on *.x09hub.com the cookie is scoped to the parent
+// domain, so signing in on x09hub.com also signs you in on ai.x09hub.com and docs.x09hub.com.
+export const SHARED_DOMAIN = "x09hub.com";
+export function cookieDomain(request) {
+  const host = new URL(request.url).hostname;
+  return host === SHARED_DOMAIN || host.endsWith("." + SHARED_DOMAIN) ? SHARED_DOMAIN : null;
 }

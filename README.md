@@ -1,32 +1,25 @@
 # X09 AI
 
-A paid, black-and-white, outer-space themed AI chat app on **Cloudflare Workers**:
-accounts, synced chat history, monthly usage limits and **Stripe subscriptions** — no free tier.
+A paid, black-and-white, outer-space themed AI chat app on **Cloudflare Workers**, powered by **Claude (Anthropic API)**:
+synced chat history, monthly usage limits and **Stripe subscriptions**, with no free tier. It uses the shared **X09 account**: one sign-in, profile and bill across X09 Hub, X09 AI and X09 Docs.
+
+**Read `X09-SHARED.md` first.** It covers the shared account, database, billing, AI, plans and physics.
 
 ```
 public/                 the app (index.html, styles.css, app.js, logo.svg, favicon.svg, manifest)
 src/worker.js           router
-src/auth.js             accounts: signup / login / logout / delete, sessions (HttpOnly cookie)
-src/stripe.js           Stripe Checkout, Customer Portal, webhook
-src/chat.js             chat streaming (Workers AI), threads, usage limits
-src/plans.js            ← PLANS: prices, names, monthly limits (edit here)
+src/core/               shared X09 core: accounts, Stripe, Claude client, plans catalog
+src/chat.js             chat streaming (Claude), threads, usage limits
 migrations/             D1 database schema
 test/                   local test server + end-to-end API tests (npm test)
 wrangler.toml           Cloudflare config
 .github/workflows/      test → migrate DB → deploy on every push to main
 ```
 
-## Plans (edit `src/plans.js`)
+## Plans
+See `X09-SHARED.md` (edit `src/core/catalog.js`). Fast = Claude Haiku 4.5, Deep = Claude Sonnet 5.
 
-| Plan | Price | Fast msgs / mo | Deep msgs / mo |
-|---|---|---|---|
-| Pilot | $12 | 1,500 | 100 |
-| Commander | $29 | 5,000 | 600 |
-| Fleet | $79 | 15,000 | 2,000 |
-
-Limits reset on the 1st of each month (UTC). Fast = Llama 3.1 8B (fp8-fast), Deep = Llama 3.3 70B (fp8-fast).
-Worst-case AI cost if a customer uses every message: ≈ $1.60 / $6.90 / $22 per month; typical use costs a fraction of that.
-If you change a price, change it **both** in `src/plans.js` (label) and on the Stripe Price (what's charged).
+If you change a price, change it **both** in `src/core/catalog.js` (label) and on the Stripe Price (what's charged).
 
 ---
 
@@ -59,6 +52,7 @@ Repo → **Settings → Secrets and variables → Actions**, add:
 |---|---|
 | `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template, **plus add permission Account → D1 → Edit** |
 | `CLOUDFLARE_ACCOUNT_ID` | Workers & Pages overview (right sidebar) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` from console.anthropic.com |
 | `STRIPE_SECRET_KEY` | `sk_...` |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` |
 

@@ -1,52 +1,25 @@
 /**
  * X09 AI — Cloudflare Worker (router)
  *
- *  Accounts   POST /api/auth/signup | /api/auth/login | /api/auth/logout | /api/auth/delete | /api/auth/password
- *             POST /api/profile
- *             GET  /api/me
- *  Plans      GET  /api/plans
- *  Billing    POST /api/billing/checkout | /api/billing/portal
- *             POST /api/stripe/webhook   (Stripe → us)
- *  Chat       POST /api/chat             (streams SSE)
+ *  Shared X09 routes (src/core/router.js): accounts, profile, plans, billing, Stripe webhook
+ *  Chat       POST /api/chat             (streams SSE from Claude)
  *             GET  /api/threads | GET/DELETE /api/threads/:id | DELETE /api/threads
  *  Everything else → the app in /public
  */
-import { json, HttpError } from "./util.js";
-import { signup, login, logout, me, deleteAccount, updateProfile, changePassword } from "./auth.js";
-import { checkout, portal, webhook } from "./stripe.js";
+import { json, HttpError } from "./core/util.js";
+import { coreRoute } from "./core/router.js";
 import { chat, listThreads, getThread, deleteThread, deleteAllThreads } from "./chat.js";
-import { publicPlans } from "./plans.js";
 import { voiceDemo } from "./voice.js";
-
-// Block cross-site form posts: state-changing requests must come from our own origin
-function sameOrigin(request) {
-  const o = request.headers.get("origin");
-  return !o || o === new URL(request.url).origin;
-}
 
 async function route(request, env, ctx) {
   const url = new URL(request.url);
   const p = url.pathname;
   const m = request.method;
 
-  if (p === "/api/stripe/webhook" && m === "POST") return webhook(request, env);
+  const core = await coreRoute(request, env);
+  if (core) return core;
 
-  if (m !== "GET" && m !== "HEAD" && !sameOrigin(request)) return json({ error: "Forbidden" }, 403);
-
-  if (p === "/api/health") return json({ ok: true, service: "x09-ai", time: new Date().toISOString() });
   if ((p === "/api/voice-demo" || p === "/api/voice-demo/audio") && m === "GET") return voiceDemo(request, env);
-  if (p === "/api/plans" && m === "GET") return json({ plans: publicPlans() });
-
-  if (p === "/api/auth/signup" && m === "POST") return signup(request, env);
-  if (p === "/api/auth/login" && m === "POST") return login(request, env);
-  if (p === "/api/auth/logout" && m === "POST") return logout(request, env);
-  if (p === "/api/auth/delete" && m === "POST") return deleteAccount(request, env);
-  if (p === "/api/auth/password" && m === "POST") return changePassword(request, env);
-  if (p === "/api/profile" && m === "POST") return updateProfile(request, env);
-  if (p === "/api/me" && m === "GET") return me(request, env);
-
-  if (p === "/api/billing/checkout" && m === "POST") return checkout(request, env);
-  if (p === "/api/billing/portal" && m === "POST") return portal(request, env);
 
   if (p === "/api/chat" && m === "POST") return chat(request, env, ctx);
   if (p === "/api/threads" && m === "GET") return listThreads(request, env);

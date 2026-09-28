@@ -381,3 +381,14 @@ body:not(.home) .composer .meta { display: none; }
   .profile-card { padding: 26px 18px 18px; }
   .pf-avatar { width: 54px; height: 54px; font-size: 1.35rem; }
 }
+
+/* ================= X09 shared look (applies with /x09/x09.css) ================= */
+.empty h1 { font-family: var(--display); font-weight: 400; font-size: clamp(1.7rem, 4.6vw, 3.2rem); letter-spacing: .01em; line-height: 1.18; }
+.empty .kicker { letter-spacing: .3em; }
+.rail-logo { width: 44px; height: 44px; }
+.topbar .x09-wordmark { font-size: .84rem; }
+.composer { box-shadow: 0 0 0 1px rgba(255,255,255,.02), 0 30px 80px rgba(0,0,0,.55); }
+.suggestions button { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .2s, background .2s; }
+.suggestions button:hover { transform: translateY(-2px); }
+.hud-right { gap: 10px; }
+@media (max-width: 820px) { .topbar [data-x09-switcher] { order: -1; } .hud-clock { display: none; } }

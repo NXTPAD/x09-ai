@@ -2,98 +2,9 @@
 (() => {
   "use strict";
 
-  // ---------- Starfield (moving, parallax, shooting stars) ----------
-  const canvas = document.getElementById("starfield");
-  const ctx = canvas.getContext("2d");
-  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let stars = [], shooters = [], W = 0, H = 0, DPR = 1;
-  let px = 0, py = 0, tx = 0, ty = 0;           // parallax (current / target)
-  let last = performance.now();
-
-  function makeStar() {
-    const z = Math.random();                     // depth: 0 = far, 1 = near
-    const ang = Math.random() * Math.PI * 2;
-    const speed = (6 + z * 22) * DPR;            // px per second
-    return {
-      x: Math.random() * W, y: Math.random() * H, z,
-      r: (0.3 + z * 1.3) * DPR,
-      vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
-      wob: Math.random() * 6.28, wobSpd: 0.2 + Math.random() * 0.5,
-      tw: Math.random() * 6.28,
-    };
-  }
-  function sizeStars() {
-    DPR = Math.min(devicePixelRatio || 1, 2);
-    W = canvas.width = innerWidth * DPR;
-    H = canvas.height = innerHeight * DPR;
-    const n = Math.min(420, Math.round((innerWidth * innerHeight) / 2600));
-    stars = Array.from({ length: n }, makeStar);
-  }
-  function spawnShooter() {
-    const fromLeft = Math.random() < 0.5;
-    const speed = (700 + Math.random() * 500) * DPR;
-    const ang = (fromLeft ? 0.35 : Math.PI - 0.35) + (Math.random() - 0.5) * 0.3;
-    shooters.push({ x: fromLeft ? Math.random() * W * 0.5 : W * (0.5 + Math.random() * 0.5), y: Math.random() * H * 0.4,
-      vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, life: 1 });
-  }
-
-  function drawStars(now) {
-    const dt = Math.min((now - last) / 1000, 0.05); last = now;
-    ctx.clearRect(0, 0, W, H);
-
-    // ease parallax toward pointer / tilt target
-    px += (tx - px) * 0.04; py += (ty - py) * 0.04;
-
-    ctx.fillStyle = "#fff";
-    for (const s of stars) {
-      if (!reduceMotion) {
-        s.wob += s.wobSpd * dt;
-        // gentle wandering: rotate velocity a little over time
-        const turn = Math.sin(s.wob) * 0.25 * dt;
-        const c = Math.cos(turn), n = Math.sin(turn);
-        const vx = s.vx * c - s.vy * n; s.vy = s.vx * n + s.vy * c; s.vx = vx;
-        s.x += s.vx * dt; s.y += s.vy * dt;
-        const m = 20 * DPR;
-        if (s.x < -m) s.x = W + m; else if (s.x > W + m) s.x = -m;
-        if (s.y < -m) s.y = H + m; else if (s.y > H + m) s.y = -m;
-        s.tw += dt * (1 + s.z * 2);
-      }
-      const ox = px * (10 + s.z * 40) * DPR, oy = py * (10 + s.z * 40) * DPR;
-      ctx.globalAlpha = (0.25 + s.z * 0.6) * (reduceMotion ? 1 : 0.65 + 0.35 * Math.sin(s.tw));
-      ctx.beginPath(); ctx.arc(s.x + ox, s.y + oy, s.r, 0, 6.28); ctx.fill();
-      if (s.z > 0.85) {                           // soft glow on the nearest stars
-        ctx.globalAlpha *= 0.15;
-        ctx.beginPath(); ctx.arc(s.x + ox, s.y + oy, s.r * 4, 0, 6.28); ctx.fill();
-      }
-    }
-
-    if (!reduceMotion) {
-      if (Math.random() < dt * 0.25 && shooters.length < 2) spawnShooter();   // ~1 every 4s
-      shooters = shooters.filter((s) => s.life > 0 && s.x > -200 && s.x < W + 200 && s.y < H + 200);
-      for (const s of shooters) {
-        s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 0.9;
-        const tail = 0.12;
-        const g = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * tail, s.y - s.vy * tail);
-        g.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`);
-        g.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.globalAlpha = 1; ctx.strokeStyle = g; ctx.lineWidth = 1.6 * DPR; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * tail, s.y - s.vy * tail); ctx.stroke();
-      }
-    }
-    ctx.globalAlpha = 1;
-    requestAnimationFrame(drawStars);
-  }
-
-  addEventListener("resize", sizeStars);
-  addEventListener("pointermove", (e) => { tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; });
-  addEventListener("deviceorientation", (e) => {
-    if (e.gamma == null) return;
-    tx = Math.max(-0.5, Math.min(0.5, e.gamma / 60));
-    ty = Math.max(-0.5, Math.min(0.5, (e.beta - 40) / 60));
-  });
-  document.addEventListener("visibilitychange", () => { last = performance.now(); });
-  sizeStars(); requestAnimationFrame(drawStars);
-
+  // ---------- X09 shared physics + account kit (public/x09/) ----------
+  X09Space.start({ density: 0.85, opacity: 0.8 });
+  X09.init({ site: "ai" });
 
   // ---------- Elements ----------
   const $ = (id) => document.getElementById(id);
@@ -105,7 +16,6 @@
     authModal: $("authModal"), authForm: $("authForm"), authEmail: $("authEmail"), authPassword: $("authPassword"),
     authError: $("authError"), authSubmit: $("authSubmit"), authTitle: $("authTitle"),
     plansModal: $("plansModal"), plansList: $("plansList"), toast: $("toast"),
-    profileModal: $("profileModal"),
   };
 
   // ---------- State ----------
@@ -182,7 +92,7 @@
     els.authError.textContent = "";
     try {
       const data = await api(authTab === "login" ? "/api/auth/login" : "/api/auth/signup", { method: "POST", body: { email, password } });
-      user = data.user;
+      X09.setUser(data.user);
       els.authPassword.value = "";
       closeModal(els.authModal);
       renderAccount();
@@ -247,18 +157,17 @@
   }
   function renderAccount() {
     const rail = $("railProfile");
-    if (user) { rail.classList.add("has-user"); rail.textContent = initials(); rail.dataset.tip = user.name || user.email; }
-    else { rail.classList.remove("has-user"); rail.innerHTML = RAIL_ICON; rail.dataset.tip = "Sign in"; }
-    if (!els.profileModal.hidden) renderProfile();
+    if (user) { rail.classList.add("has-user"); X09.paintAvatar(rail, user); rail.dataset.tip = user.name || user.email; }
+    else { rail.classList.remove("has-user", "has-photo"); rail.style.backgroundImage = ""; rail.innerHTML = RAIL_ICON; rail.dataset.tip = "Sign in"; }
     const btn = els.accountBtn;
     if (!user) {
-      btn.textContent = "Sign in"; btn.classList.remove("signed-in");
+      btn.textContent = "Sign in"; btn.classList.remove("signed-in", "has-photo"); btn.style.backgroundImage = "";
       els.accountMenu.hidden = true;
       setOnline(true);
       return;
     }
-    btn.textContent = initials();
     btn.classList.add("signed-in");
+    X09.paintAvatar(btn, user);
     btn.title = user.email;
     $("amEmail").textContent = user.email;
     $("amPlan").textContent = hasPlan() ? `${user.planName} plan${user.subStatus === "past_due" ? " · payment issue" : ""}` : "No active plan";
@@ -292,90 +201,30 @@
     showPlans();
   });
   $("amBilling").addEventListener("click", () => { toggleMenu(false); openPortal(); });
-  $("amLogout").addEventListener("click", async () => {
-    toggleMenu(false);
-    try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-    user = null; threads = []; currentId = null; messages = [];
-    renderAccount(); renderThreads(); renderMessages();
-    toast("Signed out.");
-  });
+  $("amLogout").addEventListener("click", () => { toggleMenu(false); X09.logout(); });
   async function openPortal() {
     try { const { url } = await api("/api/billing/portal", { method: "POST" }); location.href = url; }
     catch (err) { toast(err.message, 5000); }
   }
 
-  // ---------- Profile ----------
+  // ---------- Profile: the shared X09 account panel (same on every X09 site) ----------
   const RAIL_ICON = $("railProfile").innerHTML;
-  function renderProfile() {
-    if (!user) return;
-    $("pfAvatar").textContent = initials();
-    $("profileTitle").textContent = user.name || "Your profile";
-    $("pfEmail").textContent = user.email;
-    $("pfSince").textContent = user.createdAt ? "Member since " + new Date(user.createdAt).toLocaleDateString([], { month: "long", year: "numeric" }) : "";
-    if (document.activeElement !== $("pfName")) $("pfName").value = user.name || "";
-    $("pfPlan").textContent = hasPlan() ? `${user.planName} plan` : "No active plan";
-    $("pfRenew").textContent = hasPlan()
-      ? (user.subStatus === "past_due" ? "Payment issue — update your card in billing" : user.renewsAt ? "Renews " + new Date(user.renewsAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "Active")
-      : "Choose a plan to start chatting with X09.";
-    $("pfPlanBtn").textContent = hasPlan() ? "Change plan" : "Choose a plan";
-    $("pfUsage").hidden = !hasPlan();
-    $("pfBilling").hidden = !user.hasBilling;
-    if (hasPlan()) {
-      const u = user.usage;
-      $("pfFast").textContent = `${fmtNum(u.fast)} / ${fmtNum(u.fastLimit)}`;
-      $("pfDeep").textContent = `${fmtNum(u.deep)} / ${fmtNum(u.deepLimit)}`;
-      $("pfFastBar").style.width = Math.min(100, (u.fast / u.fastLimit) * 100) + "%";
-      $("pfDeepBar").style.width = Math.min(100, (u.deep / u.deepLimit) * 100) + "%";
-      const next = new Date(); next.setUTCMonth(next.getUTCMonth() + 1, 1);
-      $("pfReset").textContent = `Usage resets ${next.toLocaleDateString([], { month: "short", day: "numeric" })}`;
-    }
-  }
-  async function openProfile() {
+  function openProfile() {
     if (!user) return showAuth("login");
     toggleMenu(false); closeSide();
-    renderProfile(); openModal(els.profileModal);
-    refreshMe();
+    X09.openAccount();
   }
   $("railProfile").addEventListener("click", openProfile);
   $("amProfile").addEventListener("click", openProfile);
-  $("nameForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      user = (await api("/api/profile", { method: "POST", body: { name: $("pfName").value } })).user;
-      renderAccount(); renderProfile(); $("pfName").blur(); toast("Profile saved.");
-    } catch (err) { toast(err.message); }
-  });
-  $("pfPlanBtn").addEventListener("click", () => {
-    if (hasPlan() && user.hasBilling) return openPortal();
-    closeModal(els.profileModal); showPlans();
-  });
-  $("pfBilling").addEventListener("click", openPortal);
-  $("pwForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    $("pwError").textContent = "";
-    try {
-      await api("/api/auth/password", { method: "POST", body: { current: $("pwCurrent").value, next: $("pwNext").value } });
-      $("pwCurrent").value = $("pwNext").value = ""; $("pwDetails").open = false;
-      toast("Password updated. Other devices were signed out.");
-    } catch (err) { $("pwError").textContent = err.message; }
-  });
-  $("pfLogout").addEventListener("click", () => { closeModal(els.profileModal); $("amLogout").click(); });
-  $("delForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    $("delError").textContent = "";
-    if (!confirm("Permanently delete your X09 account and all missions?")) return;
-    try {
-      await api("/api/auth/delete", { method: "POST", body: { password: $("delPassword").value } });
-      closeModal(els.profileModal);
-      user = null; threads = []; currentId = null; messages = [];
-      renderAccount(); renderThreads(); renderMessages();
-      toast("Your account has been deleted.");
-    } catch (err) { $("delError").textContent = err.message; }
+  X09.onUser((u) => {
+    const wasSignedIn = !!user;
+    user = u;
+    if (!u && wasSignedIn) { threads = []; currentId = null; messages = []; renderThreads(); renderMessages(); }
+    renderAccount();
   });
 
   async function refreshMe() {
-    try { user = (await api("/api/me")).user; } catch {}
-    renderAccount();
+    try { X09.setUser((await api("/api/me")).user); } catch {}
     return user;
   }
 
