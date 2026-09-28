@@ -19,7 +19,7 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   // Monochrome palette (white, silver, grey) used for rim light, sparks and tinted stars
-  const HUES = ["255,255,255", "200,200,200", "140,140,140"];
+  const HUES = ["0,0,0", "45,45,45", "95,95,95"];  // ink on white
   const pick = () => HUES[Math.floor(Math.random() * HUES.length)];
   const INTERACTIVE = "a,button,input,textarea,select,label,summary,[contenteditable],[role=dialog],[role=menu],.no-space,pre,code";
 
@@ -63,8 +63,8 @@
     const S = (r * 2 + 4) * dpr;
     return sprite(S, (g) => {
       g.translate(S / 2, S / 2); g.scale(dpr, dpr);
-      g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fillStyle = "#d9d9d9"; g.fill();
-      for (const [x, y, cr] of craters) { g.beginPath(); g.arc(x, y, cr, 0, TAU); g.fillStyle = "rgba(0,0,0,.16)"; g.fill(); }
+      g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fillStyle = "#3a3a3a"; g.fill();
+      for (const [x, y, cr] of craters) { g.beginPath(); g.arc(x, y, cr, 0, TAU); g.fillStyle = "rgba(0,0,0,.35)"; g.fill(); }
     });
   }
   function makeShade(r, dpr) { // fixed light from the top-left, drawn un-rotated on top of the texture
@@ -72,7 +72,7 @@
     return sprite(S, (g) => {
       g.translate(S / 2, S / 2); g.scale(dpr, dpr);
       const grd = g.createRadialGradient(-r * 0.4, -r * 0.45, r * 0.05, 0, 0, r * 1.05);
-      grd.addColorStop(0, "rgba(255,255,255,.55)"); grd.addColorStop(0.4, "rgba(255,255,255,0)");
+      grd.addColorStop(0, "rgba(255,255,255,.75)"); grd.addColorStop(0.3, "rgba(255,255,255,.08)");
       grd.addColorStop(0.75, "rgba(0,0,0,.55)"); grd.addColorStop(1, "rgba(0,0,0,.92)");
       g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fillStyle = grd; g.fill();
     });
@@ -112,7 +112,7 @@
     }
     makeStar() {
       const z = Math.random(), a = rand(0, TAU), s = 5 + z * 18;
-      return { hue: Math.random() < 0.14 ? pick() : "255,255,255", x: rand(0, this.W), y: rand(0, this.H), z, r: 0.3 + z * 1.25, vx: Math.cos(a) * s, vy: Math.sin(a) * s, wob: rand(0, TAU), ws: rand(0.2, 0.7), tw: rand(0, TAU) };
+      return { hue: Math.random() < 0.3 ? pick() : "0,0,0", x: rand(0, this.W), y: rand(0, this.H), z, r: 0.3 + z * 1.25, vx: Math.cos(a) * s, vy: Math.sin(a) * s, wob: rand(0, TAU), ws: rand(0.2, 0.7), tw: rand(0, TAU) };
     }
     spawnBodies() {
       const area = this.W * this.H;
@@ -382,7 +382,7 @@
         for (const s of this.shooters) {
           s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 0.9;
           const tail = 0.12, gr = g.createLinearGradient(s.x, s.y, s.x - s.vx * tail, s.y - s.vy * tail);
-          gr.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`); gr.addColorStop(0.3, `rgba(200,200,200,${Math.max(s.life, 0) * 0.6})`); gr.addColorStop(1, "rgba(255,255,255,0)");
+          gr.addColorStop(0, `rgba(0,0,0,${Math.max(s.life, 0) * 0.8})`); gr.addColorStop(1, "rgba(0,0,0,0)");
           g.globalAlpha = 1; g.strokeStyle = gr; g.lineWidth = 1.5; g.lineCap = "round";
           g.beginPath(); g.moveTo(s.x, s.y); g.lineTo(s.x - s.vx * tail, s.y - s.vy * tail); g.stroke();
         }
@@ -393,14 +393,14 @@
       if (p.well > 0) {
         const rr = 26 + p.well * 34;
         const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 2.2);
-        gr.addColorStop(0, `rgba(0,0,0,${0.9 * Math.min(1, p.well)})`); gr.addColorStop(0.35, `rgba(255,255,255,${0.28 * p.well})`); gr.addColorStop(0.7, `rgba(200,200,200,${0.08 * p.well})`); gr.addColorStop(1, "rgba(200,200,200,0)");
+        gr.addColorStop(0, `rgba(0,0,0,${0.95 * Math.min(1, p.well)})`); gr.addColorStop(0.4, `rgba(0,0,0,${0.18 * p.well})`); gr.addColorStop(1, "rgba(0,0,0,0)");
         g.globalAlpha = 1; g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, TAU); g.fill();
-        g.strokeStyle = `rgba(255,255,255,${0.5 * Math.min(1, p.well)})`; g.lineWidth = 1;
+        g.strokeStyle = `rgba(0,0,0,${0.55 * Math.min(1, p.well)})`; g.lineWidth = 1;
         g.setLineDash([3, 6]); g.lineDashOffset = -performance.now() / 30;
         g.beginPath(); g.arc(p.x, p.y, rr, 0, TAU); g.stroke(); g.setLineDash([]);
       }
       for (const w of this.waves) {
-        g.globalAlpha = Math.max(0, w.life) * 0.7; g.strokeStyle = "rgb(255,255,255)"; g.lineWidth = 2;
+        g.globalAlpha = Math.max(0, w.life) * 0.7; g.strokeStyle = "rgb(0,0,0)"; g.lineWidth = 2;
         g.beginPath(); g.arc(w.x, w.y, w.r, 0, TAU); g.stroke();
       }
 
@@ -419,7 +419,7 @@
         // aurora rim light from the lower right
         g.globalCompositeOperation = "lighter";
         const rim = g.createRadialGradient(b.x + b.r * 0.55, b.y + b.r * 0.5, 0, b.x + b.r * 0.4, b.y + b.r * 0.35, b.r * 1.15);
-        rim.addColorStop(0, `rgba(${b.hue},.55)`); rim.addColorStop(1, `rgba(${b.hue},0)`);
+        rim.addColorStop(0, "rgba(255,255,255,.28)"); rim.addColorStop(1, "rgba(255,255,255,0)");
         g.fillStyle = rim; g.beginPath(); g.arc(b.x, b.y, b.r, 0, TAU); g.fill();
         g.globalCompositeOperation = "source-over";
         if (b.kind === "ringed") this.drawRing(g, b, true);
@@ -506,8 +506,8 @@
     const NS = "http://www.w3.org/2000/svg";
     const id = "x" + Math.random().toString(36).slice(2, 7);
     el.innerHTML = `<svg viewBox="0 0 64 64" width="${size}" height="${size}" fill="none" aria-hidden="true">
-      <defs><radialGradient id="${id}p" cx="34%" cy="30%" r="78%"><stop offset="0" stop-color="#fff"/><stop offset=".38" stop-color="#e2e2e2"/><stop offset=".72" stop-color="#6b6b6b"/><stop offset="1" stop-color="#161616"/></radialGradient></defs>
-      <g class="rb"></g><circle class="mb" r="2.7" fill="#fff"/><circle cx="32" cy="32" r="14.5" fill="url(#${id}p)"/><g class="rf"></g><circle class="mf" r="2.7" fill="#fff"/></svg>`;
+      <defs><radialGradient id="${id}p" cx="34%" cy="30%" r="78%"><stop offset="0" stop-color="#b5b5b5"/><stop offset=".3" stop-color="#4a4a4a"/><stop offset=".75" stop-color="#141414"/><stop offset="1" stop-color="#000"/></radialGradient></defs>
+      <g class="rb"></g><circle class="mb" r="2.7" fill="#000"/><circle cx="32" cy="32" r="14.5" fill="url(#${id}p)"/><g class="rf"></g><circle class="mf" r="2.7" fill="#000"/></svg>`;
     const svg = el.firstElementChild, rb = svg.querySelector(".rb"), rf = svg.querySelector(".rf");
     const mb = svg.querySelector(".mb"), mf = svg.querySelector(".mf");
     const rx = 29, ry = 8.6;
@@ -527,8 +527,8 @@
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!reduce) { vspin += (-spin * 30 - vspin * 5) * dt; spin += vspin * dt; t += dt * 0.9; }
       const A = -30 + spin * 0.12, Bd = 30 - spin * 0.12;
-      rb.innerHTML = `<path d="${arc(A, false)}" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/><path d="${arc(Bd, false)}" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/>`;
-      rf.innerHTML = [A, Bd].map((d) => `<path d="${arc(d, true)}" stroke="#000" stroke-width="6"/><path d="${arc(d, true)}" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`).join("");
+      rb.innerHTML = `<path d="${arc(A, false)}" stroke="#000" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round"/><path d="${arc(Bd, false)}" stroke="#000" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round"/>`;
+      rf.innerHTML = [A, Bd].map((d) => `<path d="${arc(d, true)}" stroke="#fff" stroke-width="6"/><path d="${arc(d, true)}" stroke="#000" stroke-width="2.4" stroke-linecap="round"/>`).join("");
       // moon on its own tilted orbit
       const a = (-58 * Math.PI) / 180, x = 25 * Math.cos(t), y = 7 * Math.sin(t);
       const mx = 32 + x * Math.cos(a) - y * Math.sin(a), my = 32 + x * Math.sin(a) + y * Math.cos(a);
