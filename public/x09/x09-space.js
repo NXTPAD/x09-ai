@@ -18,8 +18,8 @@
   const TAU = Math.PI * 2;
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  // Aurora palette (violet, cyan, rose) used for rim light, sparks and tinted stars
-  const HUES = ["139,108,255", "69,212,255", "255,122,192"];
+  // Monochrome palette (white, silver, grey) used for rim light, sparks and tinted stars
+  const HUES = ["255,255,255", "200,200,200", "140,140,140"];
   const pick = () => HUES[Math.floor(Math.random() * HUES.length)];
   const INTERACTIVE = "a,button,input,textarea,select,label,summary,[contenteditable],[role=dialog],[role=menu],.no-space,pre,code";
 
@@ -382,7 +382,7 @@
         for (const s of this.shooters) {
           s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt * 0.9;
           const tail = 0.12, gr = g.createLinearGradient(s.x, s.y, s.x - s.vx * tail, s.y - s.vy * tail);
-          gr.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`); gr.addColorStop(0.3, `rgba(69,212,255,${Math.max(s.life, 0) * 0.6})`); gr.addColorStop(1, "rgba(139,108,255,0)");
+          gr.addColorStop(0, `rgba(255,255,255,${Math.max(s.life, 0)})`); gr.addColorStop(0.3, `rgba(200,200,200,${Math.max(s.life, 0) * 0.6})`); gr.addColorStop(1, "rgba(255,255,255,0)");
           g.globalAlpha = 1; g.strokeStyle = gr; g.lineWidth = 1.5; g.lineCap = "round";
           g.beginPath(); g.moveTo(s.x, s.y); g.lineTo(s.x - s.vx * tail, s.y - s.vy * tail); g.stroke();
         }
@@ -393,14 +393,14 @@
       if (p.well > 0) {
         const rr = 26 + p.well * 34;
         const gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 2.2);
-        gr.addColorStop(0, `rgba(0,0,0,${0.9 * Math.min(1, p.well)})`); gr.addColorStop(0.35, `rgba(139,108,255,${0.28 * p.well})`); gr.addColorStop(0.7, `rgba(69,212,255,${0.08 * p.well})`); gr.addColorStop(1, "rgba(69,212,255,0)");
+        gr.addColorStop(0, `rgba(0,0,0,${0.9 * Math.min(1, p.well)})`); gr.addColorStop(0.35, `rgba(255,255,255,${0.28 * p.well})`); gr.addColorStop(0.7, `rgba(200,200,200,${0.08 * p.well})`); gr.addColorStop(1, "rgba(200,200,200,0)");
         g.globalAlpha = 1; g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, TAU); g.fill();
-        g.strokeStyle = `rgba(190,175,255,${0.5 * Math.min(1, p.well)})`; g.lineWidth = 1;
+        g.strokeStyle = `rgba(255,255,255,${0.5 * Math.min(1, p.well)})`; g.lineWidth = 1;
         g.setLineDash([3, 6]); g.lineDashOffset = -performance.now() / 30;
         g.beginPath(); g.arc(p.x, p.y, rr, 0, TAU); g.stroke(); g.setLineDash([]);
       }
       for (const w of this.waves) {
-        g.globalAlpha = Math.max(0, w.life) * 0.7; g.strokeStyle = "rgb(139,108,255)"; g.lineWidth = 2;
+        g.globalAlpha = Math.max(0, w.life) * 0.7; g.strokeStyle = "rgb(255,255,255)"; g.lineWidth = 2;
         g.beginPath(); g.arc(w.x, w.y, w.r, 0, TAU); g.stroke();
       }
 
